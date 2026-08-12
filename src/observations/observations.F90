@@ -123,6 +123,9 @@
    integer, public           :: int_press_type
    logical, public           :: s_adv
    logical, public           :: t_adv
+   REALTYPE, public          :: slope_bbl_factor_x
+   REALTYPE, public          :: slope_bbl_factor_y
+   logical, public           :: slope_bbl_evolving_reference
 
 !  Plume
    integer, public           :: plume_type
@@ -324,7 +327,7 @@
                    default=43200._rk)
 
    twig => branch%get_typed_child('int_pressure', 'internal pressure')
-   call twig%get(int_press_type, 'type', 'method', options=(/option(0, 'None', 'none'), option(1, 'prescribed horiztonal gradients of T and S','gradients'), option(2, 'surface or bottom plume','plume')/), default=0)
+   call twig%get(int_press_type, 'type', 'method', options=(/option(0, 'None', 'none'), option(1, 'prescribed horiztonal gradients of T and S','gradients'), option(2, 'surface or bottom plume','plume'), option(3, 'slope BBL buoyancy-anomaly forcing','slope_bbl')/), default=0)
    leaf => twig%get_typed_child('gradients', 'horizontal salinity and temperature gradients')
    call leaf%get(dtdx_input, 'dtdx', 'temperature gradient in West-East direction', 'Celsius/m', default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
    call leaf%get(dtdy_input, 'dtdy', 'temperature gradient in South-North direction', 'Celsius/m', default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
@@ -335,6 +338,11 @@
    call leaf%get(plume_type, 'type', 'plume type', options=(/option(1, 'buoyant surface-attached','surface'), option(2, 'dense bottom-attached','bottom')/), default=2)
    call leaf%get(plume_slope_x, 'x_slope', 'plume slope in West-East direction', '-',   default=0._rk)
    call leaf%get(plume_slope_y, 'y_slope', 'plume slope in South-North direction', '-', default=0._rk)
+
+   leaf => twig%get_typed_child('slope_bbl', 'slope bottom-boundary-layer forcing')
+   call leaf%get(slope_bbl_factor_x, 'factor_x', 'x buoyancy-anomaly factor', '-', default=0._rk)
+   call leaf%get(slope_bbl_factor_y, 'factor_y', 'y buoyancy-anomaly factor', '-', default=0._rk)
+   call leaf%get(slope_bbl_evolving_reference, 'evolving_reference', 'remove the time-dependent far-field buoyancy displacement', default=.false.)
 
    call twig%get(t_adv, 't_adv', 'horizontally advect temperature', default=.false.)
    call twig%get(s_adv, 's_adv', 'horizontally advect salinity', default=.false.)

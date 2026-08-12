@@ -25,7 +25,19 @@ add_executable(test_time EXCLUDE_FROM_ALL
               )
 target_link_libraries(test_time PRIVATE util)
 
-add_custom_target(gotm_tests)
-add_dependencies(gotm_tests test_airsea test_albedo test_time)
+add_executable(test_slope_bbl EXCLUDE_FROM_ALL
+               test_slope_bbl.F90
+              )
+target_link_libraries(test_slope_bbl PRIVATE meanflow observations)
 
-set_property(TARGET gotm_tests test_airsea test_albedo test_bulk test_time PROPERTY FOLDER tests)
+add_custom_target(check_slope_bbl
+                  COMMAND $<TARGET_FILE:test_slope_bbl> fixed
+                  COMMAND $<TARGET_FILE:test_slope_bbl> evolving
+                  DEPENDS test_slope_bbl
+                 )
+
+add_custom_target(gotm_tests)
+add_dependencies(gotm_tests test_airsea test_albedo test_time check_slope_bbl)
+
+set_property(TARGET gotm_tests test_airsea test_albedo test_bulk test_time
+                    test_slope_bbl check_slope_bbl PROPERTY FOLDER tests)

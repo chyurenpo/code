@@ -1,93 +1,56 @@
-[![Build Status](https://travis-ci.org/gotm-model/code.svg?branch=master)](https://travis-ci.org/gotm-model/code)
+# GOTM with slope-following bottom-boundary-layer forcing
 
-## What is GOTM?
+This repository is a research fork of the
+[General Ocean Turbulence Model (GOTM)](https://github.com/gotm-model/code).
+It adds an optional internal-pressure forcing for a one-dimensional water
+column aligned with a planar slope.
 
-GOTM - the **G**eneral **O**cean **T**urbulence **M**odel is an ambitious name for a one-dimensional water column model for marine and limnological applications. It is coupled to a choice of traditional as well as state-of-the-art parameterisations for vertical turbulent mixing. The package consists of the FORTRAN source code, a number of idealised and realistic test cases, and a scientific documentation, all published under the GNU public license.
+## Changes in this fork
 
-Further information about GOTM can be found [here](https://gotm.net).
+- Added the opt-in internal-pressure mode `slope_bbl`.
+- Represented the along-slope pressure force using the buoyancy anomaly
+  relative to a reference profile.
+- Added independent x- and y-direction slope factors.
+- Added fixed and evolving reference-profile options.
+- Added focused regression tests for both reference modes.
+- Preserved the behavior of the existing `none`, `gradients`, and `plume`
+  internal-pressure modes.
 
-### Manual build and install
+The formulation, configuration parameters, equations, assumptions, current
+restart limitation, and regression-test instructions are described in
+[Slope-following bottom-boundary-layer forcing](doc/slope_bbl.md).
 
-Note these instruction are writen for the development version of GOTM and the cases described below will only work with this version.
+## Build and test
 
-GOTM being written in Fortran requires compilation before it can be used.
+GOTM uses CMake and requires a Fortran compiler. A minimal out-of-source build
+and the focused slope-BBL test can be run with:
 
-Below is provided a short description on how to obtain the code, configure, compile and install GOTM.
-
-#### Cloning the code
-
-The [GOTM source code](https://github.com/gotm-model/code) is in a Git repository and as a first step this code most be cloned to the local computer(*). [Git](https://git-scm.com/) must be installed.
-
-Not strictly necessary creating a new folder for GOTM is a good idea.
-```
-mkdir GOTM
-cd GOTM
-```
-Now clone the code to the local machine:
-```
-git clone --recurse-submodules https://github.com/gotm-model/code.git
-cd code
-```
-#### Configuring the code for compilation
-
-A few requisits must be fullfilled befor proceeding. Being general descriptions the following instructions should work both on Linux/Mac and Windows. The example commands are to be executed in a terminal window - alternatives using a GUI is possible but beyond the instructions given here.
-
-As a common build system we use [CMake](https://cmake.org/) and [Ninja](https://ninja-build.org/). So please install these before proceeding.
-
-Furthermore, a Fortran compiler must be installed and discoverable by CMake.
-
-NetCDF has been - and maybe still will be a headache - but it is assumed that NetCDF is installed with Fortran support. For Windows we provide a prebuilt set of libraries.
-
-*As an alternative to use system installed programs (CMake, Ninja, Fortran and required libraries) scroll to the bottom of the page(**) and follow the instructions to create a Conda environment with everything required. Then return and continue from here.*
-
-Configuration is done with cmake - an example being:
-```
-cmake -G Ninja -B build -S code
-```
-This will create a new folder - build - with the necessary information for actual compiling the code.
-
-The build system for GOTM provides support for options to pass to the actual compilation. These are provided as extra arguments to the above cmake execution. As and example to include support for ice - use the following:
-
-```
-cmake -G Ninja -B build -S code -DGOTM_USE_STIM
-```
-If something goes wrong it is always safe to completely remove the build folder and start all over.
-
-#### Compiling the code
-
-If the cmake command did not result in any errors we are ready to actually compile the code into an executable:
-```
+```bash
+cmake -S . -B build
 cmake --build build
+cmake --build build --target check_slope_bbl
 ```
-This will take a little while but should en up in a compiled GOTM executable in the build folder. 
-This executable is ready to run but for convinience you might install it in a folder in the PATH on your computer - in which case you can just type - gotm - in any folder.
 
-#### Installing the GOTM executable 
-The installation also is done by CMake:
-```
-cmake --install build --prefix <folder_in_your_path>
-```
-To test if it works open a new terminal window and execute - *gotm*.
+The slope-following forcing is disabled unless `int_pressure.type` is set to
+`slope_bbl`; standard GOTM configurations therefore retain their existing
+behavior.
 
-#### GOTM test cases 
-GOTM comes with a number of ready to run test cases. There are also in a Git repository and can be obtained like:
-```
-git clone --recurse-submodules https://github.com/gotm-model/cases.git
-```
-Entering any of the cases folders and just executing - gotm - should run the model for the specific configuration.
+## Upstream project and license
 
-An older description is provided here [GOTM homepage](http://www.gotm.net/portfolio/software).
+GOTM is a one-dimensional water-column model for marine and limnological
+applications, with a range of parameterizations for vertical turbulent
+mixing. For the official model, documentation, and development history, see
+the [upstream GOTM repository](https://github.com/gotm-model/code) and the
+[GOTM website](https://gotm.net).
 
-(*) For people who intend to contribute to the GOTM source code a 'fork' is a better solution.
+This fork retains the license and copyright terms distributed with the
+upstream GOTM source code. See [COPYING](COPYING).
 
-(**) Create a Conda environment.
-If a Conda is not already available install [miniconda](https://www.anaconda.com/docs/getting-started/miniconda/main). Activate the base environment and do (note you must be in the root of the GOTM source code - where the *environment.yml* files is):
-```
-conda env create -f environment.yml
-```
-If successful activate the *gfortran* environment.
-```
-conda activate gfortran
-```
-Return to the configuration instructions give further up.
+## AI-assistance disclosure
 
+OpenAI Codex was used to assist with code organization, documentation drafting,
+and regression-test preparation for this extension. The repository author is
+responsible for the scientific formulation, configuration choices, review,
+validation, and interpretation of results. AI-assisted changes should be
+independently reviewed and validated before use in scientific or operational
+work.

@@ -159,6 +159,8 @@
    use observations,  only: int_press_type
    use observations,  only: dsdx_input,dsdy_input,dtdx_input,dtdy_input
    use observations,  only: plume_type,plume_slope_x,plume_slope_y
+   use observations,  only: slope_bbl_factor_x,slope_bbl_factor_y
+   use observations,  only: slope_bbl_evolving_reference
    use observations,  only: idpdx,idpdy
    IMPLICIT NONE
 !
@@ -176,7 +178,10 @@
    integer                             :: i
    REALTYPE                            :: z,dx,dy
    REALTYPE                            :: dSS,dTT,Bl,Br,int
+   REALTYPE                            :: slope_ref_offset
    REALTYPE                            :: dxB(0:nlev),dyB(0:nlev)
+   REALTYPE, allocatable, save         :: slope_buoy_ref(:)
+   logical, save                       :: slope_ref_initialized=.false.
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -249,6 +254,46 @@
       end if
 
    endif
+
+!  Rotated-coordinate bottom-boundary-layer forcing. The reference profile
+!  removes the balanced ambient stratification, leaving only the buoyancy
+!  anomaly in the cross-slope momentum equation:
+!
+!     du/dt = factor_x * (buoy - buoy_reference)
+!
+!  Horizontal advection of the ambient stratification is configured
+!  independently with mimic_3d/int_pressure/gradients and t_adv.
+!  For an oscillatory sloping BBL the no-mixing reference profile evolves by
+!  a vertically uniform displacement [Umlauf and Burchard (2011), Eq. (11)].
+!  If evolving_reference is enabled, this displacement is diagnosed in the
+!  far field at the uppermost grid cell. This guarantees zero internal
+!  pressure anomaly outside the BBL while retaining the initial vertical
+!  reference gradient.
+   if (int_press_type == 3) then ! slope_bbl
+      if (.not. allocated(slope_buoy_ref)) then
+         allocate(slope_buoy_ref(0:nlev))
+      end if
+
+      if (.not. slope_ref_initialized) then
+         slope_buoy_ref = buoy
+         slope_ref_initialized = .true.
+      end if
+
+      slope_ref_offset = _ZERO_
+      if (slope_bbl_evolving_reference) then
+         slope_ref_offset = buoy(nlev)-slope_buoy_ref(nlev)
+      end if
+
+      idpdx = _ZERO_
+      idpdy = _ZERO_
+      do i=1,nlev
+         idpdx(i) = slope_bbl_factor_x &
+              *(buoy(i)-slope_buoy_ref(i)-slope_ref_offset)
+         idpdy(i) = slope_bbl_factor_y &
+              *(buoy(i)-slope_buoy_ref(i)-slope_ref_offset)
+      end do
+   endif
+
    end subroutine internal_pressure
 
 !EOC
