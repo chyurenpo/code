@@ -42,6 +42,19 @@ factor_y = 0
 dT/dx = N_inf^2 sin(alpha)/(g alpha_T)
 ```
 
+`factor_x` and `factor_y` are the signed components of the nondimensional
+bottom-slope vector in the model x and y directions. They multiply the same
+buoyancy anomaly to produce the two pressure-force components:
+
+```text
+idpdx = factor_x * b_anomaly
+idpdy = factor_y * b_anomaly
+```
+
+For a slope aligned entirely with x, use `factor_x = tan(alpha)` and
+`factor_y = 0`. The signs must be consistent with the model coordinate
+directions and the prescribed background tracer gradients.
+
 where `alpha_T` is the thermal expansion coefficient for a linear equation of
 state. With GOTM buoyancy based on `g cos(alpha)`, the implemented acceleration
 
