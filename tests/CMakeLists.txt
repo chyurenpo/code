@@ -46,17 +46,30 @@ if(GOTM_USE_CVMIX)
                      COMMAND $<TARGET_FILE:test_bottom_kpp_ekman_clip>
                      DEPENDS test_bottom_kpp_ekman_clip
                     )
+
+   add_executable(test_bottom_kpp_additive_mixing EXCLUDE_FROM_ALL
+                  test_bottom_kpp_additive_mixing.F90
+                 )
+   target_link_libraries(test_bottom_kpp_additive_mixing PRIVATE gotm_cvmix)
+
+   add_custom_target(check_bottom_kpp_additive_mixing
+                     COMMAND $<TARGET_FILE:test_bottom_kpp_additive_mixing>
+                     DEPENDS test_bottom_kpp_additive_mixing
+                    )
 endif()
 
 add_custom_target(gotm_tests)
 add_dependencies(gotm_tests test_airsea test_albedo test_time check_slope_bbl)
 if(GOTM_USE_CVMIX)
-   add_dependencies(gotm_tests check_bottom_kpp_ekman_clip)
+   add_dependencies(gotm_tests check_bottom_kpp_ekman_clip
+                     check_bottom_kpp_additive_mixing)
 endif()
 
 set_property(TARGET gotm_tests test_airsea test_albedo test_bulk test_time
                     test_slope_bbl check_slope_bbl PROPERTY FOLDER tests)
 if(GOTM_USE_CVMIX)
    set_property(TARGET test_bottom_kpp_ekman_clip check_bottom_kpp_ekman_clip
+                       test_bottom_kpp_additive_mixing
+                       check_bottom_kpp_additive_mixing
                 PROPERTY FOLDER tests)
 endif()

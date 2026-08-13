@@ -37,6 +37,7 @@
 ! !PUBLIC MEMBER FUNCTIONS:
    public init_cvmix, do_cvmix, clean_cvmix, post_init_cvmix
    public apply_bottom_kpp_ekman_clip
+   public assemble_bottom_kpp_coefficients
 !
    interface init_cvmix
       module procedure init_cvmix_yaml
@@ -103,6 +104,9 @@
 !  apply the classic GOTM bottom Ekman-depth cap, independently of
 !  the sign of the bottom buoyancy flux
    logical                               ::    bbl_clip_mld
+
+!  add previously computed interior mixing to bottom-KPP coefficients
+   logical                               ::    bbl_add_interior_mixing
 
 !  limit the OBL by the Ekman depth / Monin-Obukhov length if true
    logical                               ::    sbl_check_Ekman_length, &
@@ -301,6 +305,8 @@
       minimum=0._rk, default=0.3_rk)
    call twig%get(bbl_clip_mld, 'clip_mld',                             &
       'apply the classic GOTM bottom Ekman-depth cap', default=.false.)
+   call twig%get(bbl_add_interior_mixing, 'add_interior_mixing',       &
+      'add interior mixing to bottom-KPP coefficients', default=.false.)
    call twig%get(bbl_check_Ekman_length, 'check_Ekman_length',         &
       'limit the OBL by the Ekman depth', default=.false.)
    call twig%get(bbl_check_MonOb_length, 'check_MonOb_length',         &
@@ -690,6 +696,11 @@
          LEVEL4 'Classic bottom Ekman cap                - active -'
       else
          LEVEL4 'Classic bottom Ekman cap            - not active -'
+      endif
+      if (bbl_add_interior_mixing) then
+         LEVEL4 'Add interior mixing to bottom KPP       - active -'
+      else
+         LEVEL4 'Add interior mixing to bottom KPP   - not active -'
       endif
 
       select case (bbl_match_technique)
@@ -1720,11 +1731,11 @@
 
    call cvmix_coeffs_kpp(CVmix_vars_tmp, CVmix_kpp_params_tmp)
 
-   do k=0,kbbl
-      cvmix_num(k) = CVmix_vars_tmp%Mdiff_iface(k+1)
-      cvmix_nuh(k) = CVmix_vars_tmp%Tdiff_iface(k+1)
-      cvmix_nus(k) = CVmix_vars_tmp%Sdiff_iface(k+1)
-   enddo
+   call assemble_bottom_kpp_coefficients(                             &
+      nlev,kbbl,CVmix_vars_tmp%kOBL_depth,bbl_add_interior_mixing,    &
+      cvmix_num,cvmix_nuh,cvmix_nus,                                 &
+      CVmix_vars_tmp%Mdiff_iface,CVmix_vars_tmp%Tdiff_iface,          &
+      CVmix_vars_tmp%Sdiff_iface)
 
    return
 
@@ -1733,6 +1744,60 @@
    return
 
  end subroutine bottom_layer
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Assemble bottom-KPP and interior mixing coefficients
+!
+! !INTERFACE:
+   subroutine assemble_bottom_kpp_coefficients(                       &
+      nlev,kbbl,kOBL_depth,add_interior_mixing,num,nuh,nus,           &
+      kpp_num,kpp_nuh,kpp_nus)
+!
+! !DESCRIPTION:
+! Apply CVMix bottom-KPP coefficients using either native replacement or
+! opt-in additive assembly. CVMix replaces interfaces 2:ktup+1, where
+! ktup=nint(kOBL_depth)-1. In additive mode, the pre-existing interior
+! coefficient is retained and the KPP contribution is added only over that
+! replaced range. Interfaces outside it are left unchanged to avoid adding
+! the same interior coefficient twice.
+!
+! !INPUT PARAMETERS:
+   integer, intent(in)                  :: nlev,kbbl
+   REALTYPE, intent(in)                 :: kOBL_depth
+   logical, intent(in)                  :: add_interior_mixing
+   REALTYPE, intent(in)                 :: kpp_num(1:nlev+1),          &
+                                           kpp_nuh(1:nlev+1),          &
+                                           kpp_nus(1:nlev+1)
+!
+! !INPUT/OUTPUT PARAMETERS:
+   REALTYPE, intent(inout)              :: num(0:nlev),nuh(0:nlev),   &
+                                           nus(0:nlev)
+!
+! !LOCAL VARIABLES:
+   integer                              :: k,kkpp
+!
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   if (add_interior_mixing) then
+      kkpp=min(kbbl,nlev,max(0,nint(kOBL_depth)-1))
+      do k=1,kkpp
+         num(k)=num(k)+kpp_num(k+1)
+         nuh(k)=nuh(k)+kpp_nuh(k+1)
+         nus(k)=nus(k)+kpp_nus(k+1)
+      enddo
+   else
+      do k=0,kbbl
+         num(k)=kpp_num(k+1)
+         nuh(k)=kpp_nuh(k+1)
+         nus(k)=kpp_nus(k+1)
+      enddo
+   endif
+
+   end subroutine assemble_bottom_kpp_coefficients
 !EOC
 
 !-----------------------------------------------------------------------

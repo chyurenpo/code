@@ -13,7 +13,8 @@ column aligned with a planar slope.
 - Added independent x- and y-direction slope factors.
 - Added fixed and evolving reference-profile options.
 - Added an optional classic Ekman-depth cap for CVMix bottom KPP.
-- Added focused regression tests for the slope-BBL and Ekman-cap options.
+- Added optional additive assembly of CVMix interior and bottom-KPP mixing.
+- Added focused regression tests for all extension options.
 - Preserved the behavior of the existing `none`, `gradients`, and `plume`
   internal-pressure modes.
 
@@ -22,6 +23,8 @@ restart limitation, and regression-test instructions are described in
 [Slope-following bottom-boundary-layer forcing](doc/slope_bbl.md).
 The optional KPP depth limit is documented in
 [Bottom-KPP Ekman-depth clipping](doc/bottom_kpp_ekman_clip.md).
+The alternative coefficient assembly is documented in
+[Additive interior mixing in bottom KPP](doc/bottom_kpp_additive_mixing.md).
 
 ## Build and test
 
@@ -33,6 +36,7 @@ cmake -S . -B build -DGOTM_USE_CVMIX=ON
 cmake --build build
 cmake --build build --target check_slope_bbl
 cmake --build build --target check_bottom_kpp_ekman_clip
+cmake --build build --target check_bottom_kpp_additive_mixing
 ```
 
 The slope-following forcing is disabled unless `int_pressure.type` is set to
