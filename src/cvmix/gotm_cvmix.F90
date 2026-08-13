@@ -36,6 +36,7 @@
 
 ! !PUBLIC MEMBER FUNCTIONS:
    public init_cvmix, do_cvmix, clean_cvmix, post_init_cvmix
+   public apply_bottom_kpp_ekman_clip
 !
    interface init_cvmix
       module procedure init_cvmix_yaml
@@ -98,6 +99,10 @@
 !  G'(1) = 0 (shape function) if true, otherwise compute G'(1) as in LMD94
    logical                               ::    sbl_use_noDGat1,        &
                                                bbl_use_noDGat1
+
+!  apply the classic GOTM bottom Ekman-depth cap, independently of
+!  the sign of the bottom buoyancy flux
+   logical                               ::    bbl_clip_mld
 
 !  limit the OBL by the Ekman depth / Monin-Obukhov length if true
    logical                               ::    sbl_check_Ekman_length, &
@@ -294,6 +299,8 @@
       minimum=0._rk, maximum=1._rk, default=0.1_rk)
    call twig%get(bbl_Ri_c, 'Ri_c', 'critical Richardson number', '-',  &
       minimum=0._rk, default=0.3_rk)
+   call twig%get(bbl_clip_mld, 'clip_mld',                             &
+      'apply the classic GOTM bottom Ekman-depth cap', default=.false.)
    call twig%get(bbl_check_Ekman_length, 'check_Ekman_length',         &
       'limit the OBL by the Ekman depth', default=.false.)
    call twig%get(bbl_check_MonOb_length, 'check_MonOb_length',         &
@@ -679,6 +686,11 @@
          LEVEL4 "Set shape function G'(1) = 0       - not active -"
       endif
       LEVEL4 'Ri_c: ', bbl_Ri_c
+      if (bbl_clip_mld) then
+         LEVEL4 'Classic bottom Ekman cap                - active -'
+      else
+         LEVEL4 'Classic bottom Ekman cap            - not active -'
+      endif
 
       select case (bbl_match_technique)
       case (CVMIX_MATCH_SIMPLE)
@@ -1673,6 +1685,7 @@
    CVmix_vars_tmp%Coriolis = f
 
    call cvmix_kpp_compute_OBL_depth(CVmix_vars_tmp, CVmix_kpp_params_tmp)
+   call apply_bottom_kpp_ekman_clip(CVmix_vars_tmp,u_taub,f,bbl_clip_mld)
 
    ! CVMix returns a BoundaryLayerDepth > 0
    zbbl = z_w(0)+CVmix_vars_tmp%BoundaryLayerDepth
@@ -1720,6 +1733,48 @@
    return
 
  end subroutine bottom_layer
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Apply the classic bottom-KPP Ekman-depth cap
+!
+! !INTERFACE:
+   subroutine apply_bottom_kpp_ekman_clip(vars,u_taub,f,enabled)
+!
+! !DESCRIPTION:
+! Limit a diagnosed bottom boundary-layer depth to
+! $0.7 u_*^b/|f|$. Unlike CVMix's lEkman option, this cap does not depend
+! on the sign of the bottom buoyancy flux. The fractional boundary-layer
+! index is updated together with the physical depth so subsequent KPP
+! coefficient calculations use a consistent vertical range.
+!
+! !INPUT PARAMETERS:
+   REALTYPE, intent(in)                  :: u_taub,f
+   logical, intent(in)                   :: enabled
+!
+! !INPUT/OUTPUT PARAMETERS:
+   type(cvmix_data_type), intent(inout)  :: vars
+!
+! !LOCAL VARIABLES:
+   REALTYPE                              :: limited_depth
+!
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   if (.not.enabled) return
+   if (u_taub.le._ZERO_ .or. abs(f).le.eps) return
+
+   limited_depth=min(vars%BoundaryLayerDepth,                         &
+      (7.0*_ONE_/10.0)*u_taub/abs(f))
+   if (limited_depth.lt.vars%BoundaryLayerDepth) then
+      vars%BoundaryLayerDepth=limited_depth
+      vars%kOBL_depth=cvmix_kpp_compute_kOBL_depth(                    &
+         vars%zw_iface,vars%zt_cntr,vars%BoundaryLayerDepth)
+   endif
+
+   end subroutine apply_bottom_kpp_ekman_clip
 !EOC
 
 !-----------------------------------------------------------------------

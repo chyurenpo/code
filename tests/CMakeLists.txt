@@ -36,8 +36,27 @@ add_custom_target(check_slope_bbl
                   DEPENDS test_slope_bbl
                  )
 
+if(GOTM_USE_CVMIX)
+   add_executable(test_bottom_kpp_ekman_clip EXCLUDE_FROM_ALL
+                  test_bottom_kpp_ekman_clip.F90
+                 )
+   target_link_libraries(test_bottom_kpp_ekman_clip PRIVATE gotm_cvmix)
+
+   add_custom_target(check_bottom_kpp_ekman_clip
+                     COMMAND $<TARGET_FILE:test_bottom_kpp_ekman_clip>
+                     DEPENDS test_bottom_kpp_ekman_clip
+                    )
+endif()
+
 add_custom_target(gotm_tests)
 add_dependencies(gotm_tests test_airsea test_albedo test_time check_slope_bbl)
+if(GOTM_USE_CVMIX)
+   add_dependencies(gotm_tests check_bottom_kpp_ekman_clip)
+endif()
 
 set_property(TARGET gotm_tests test_airsea test_albedo test_bulk test_time
                     test_slope_bbl check_slope_bbl PROPERTY FOLDER tests)
+if(GOTM_USE_CVMIX)
+   set_property(TARGET test_bottom_kpp_ekman_clip check_bottom_kpp_ekman_clip
+                PROPERTY FOLDER tests)
+endif()
